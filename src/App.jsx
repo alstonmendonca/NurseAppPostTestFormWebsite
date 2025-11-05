@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { supabase } from './lib/supabase'
 import PosttestForm from './components/PosttestForm'
 import SuccessPage from './components/SuccessPage'
@@ -127,7 +127,7 @@ function App() {
 
   // Validate participant number and set intervention state.
   // Returns true if valid, false otherwise.
-  const validateParticipantNumber = async (participantNumber) => {
+  const validateParticipantNumber = useCallback(async (participantNumber) => {
     setParticipantChecking(true)
     setParticipantValidationError(null)
     setParticipantValidated(false)
@@ -179,7 +179,7 @@ function App() {
     } finally {
       setParticipantChecking(false)
     }
-  }
+  }, [])
 
   if (isSubmitted) {
     return <SuccessPage />
@@ -212,12 +212,12 @@ function App() {
         isSubmitting={isSubmitting}
         isInterventionGroup={isInterventionGroup}
         onValidateParticipant={validateParticipantNumber}
-        onParticipantNumberChange={(val) => {
-          // Invalidate any prior validation when participant number changes
-          setParticipantValidated(false)
-          setParticipantValidationError(null)
-          setIsInterventionGroup(false)
-        }}
+          onParticipantNumberChange={useCallback((val) => {
+            // Invalidate any prior validation when participant number changes
+            setParticipantValidated(false)
+            setParticipantValidationError(null)
+            setIsInterventionGroup(false)
+          }, [])}
         participantValidated={participantValidated}
         participantChecking={participantChecking}
         participantValidationError={participantValidationError}
