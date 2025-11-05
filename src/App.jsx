@@ -211,6 +211,16 @@ function App() {
         onSubmit={handleFormSubmit} 
         isSubmitting={isSubmitting}
         isInterventionGroup={isInterventionGroup}
+        onValidateParticipant={validateParticipantNumber}
+        onParticipantNumberChange={(val) => {
+          // Invalidate any prior validation when participant number changes
+          setParticipantValidated(false)
+          setParticipantValidationError(null)
+          setIsInterventionGroup(false)
+        }}
+        participantValidated={participantValidated}
+        participantChecking={participantChecking}
+        participantValidationError={participantValidationError}
       />
     </div>
   )

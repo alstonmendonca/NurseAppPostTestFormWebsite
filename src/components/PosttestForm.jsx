@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const PosttestForm = ({
   onSubmit,
@@ -80,6 +80,31 @@ const PosttestForm = ({
     }
   }
 
+  // Debounce participant number validation as the user types.
+  const debounceTimer = useRef(null)
+  useEffect(() => {
+    const num = formData.participant_number
+    // Only run debounce if parent provided validation callback
+    if (typeof onValidateParticipant === 'function') {
+      // clear existing timer
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+
+      // if empty, do nothing (but parent was already notified via onParticipantNumberChange)
+      if (!num || num.toString().trim().length === 0) return
+
+      debounceTimer.current = setTimeout(() => {
+        const parsed = parseInt(num)
+        if (!Number.isNaN(parsed)) {
+          onValidateParticipant(parsed)
+        }
+      }, 600)
+    }
+
+    return () => {
+      if (debounceTimer.current) clearTimeout(debounceTimer.current)
+    }
+  }, [formData.participant_number, onValidateParticipant])
+
   const handleSubmit = (e) => {
     e.preventDefault()
     onSubmit(formData)
@@ -151,18 +176,27 @@ const PosttestForm = ({
               <label htmlFor="participant_number" className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
                 Please enter your Participant Number <span className="text-red-500">*</span>
               </label>
-              <input
-                type="number"
-                id="participant_number"
-                name="participant_number"
-                value={formData.participant_number}
-                onChange={handleInputChange}
-                onBlur={() => onValidateParticipant && onValidateParticipant(parseInt(formData.participant_number))}
-                required
-                min="1"
-                placeholder="Enter your participant number"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-              />
+              <div className="flex space-x-2 items-center">
+                <input
+                  type="number"
+                  id="participant_number"
+                  name="participant_number"
+                  value={formData.participant_number}
+                  onChange={handleInputChange}
+                  onBlur={() => onValidateParticipant && onValidateParticipant(parseInt(formData.participant_number))}
+                  required
+                  min="1"
+                  placeholder="Enter your participant number"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+                />
+                <button
+                  type="button"
+                  onClick={() => onValidateParticipant && onValidateParticipant(parseInt(formData.participant_number))}
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                >
+                  Check
+                </button>
+              </div>
               <div className="mt-2 flex items-center space-x-2">
                 {participantChecking && (
                   <span className="text-xs text-gray-500">Checking participant number...</span>
