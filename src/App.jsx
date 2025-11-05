@@ -9,29 +9,24 @@ function App() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [error, setError] = useState(null)
   const [isInterventionGroup, setIsInterventionGroup] = useState(false)
+  const [participantValidated, setParticipantValidated] = useState(false)
+  const [participantChecking, setParticipantChecking] = useState(false)
+  const [participantValidationError, setParticipantValidationError] = useState(null)
 
   const handleFormSubmit = async (formData) => {
     setIsSubmitting(true)
     setError(null)
 
     try {
+      // If the participant hasn't been validated yet (via onBlur/validate), do it now
       const participantNumber = parseInt(formData.participant_number)
-
-      // Validate that the participant number exists and get their group assignment
-      const { data: participant, error: fetchError } = await supabase
-        .from('participants')
-        .select('participant_number, Group')
-        .eq('participant_number', participantNumber)
-        .eq('id_used', true)
-        .single()
-
-      if (fetchError || !participant) {
-        throw new Error('Invalid participant number. Please check your participant number and try again.')
+      if (!participantValidated) {
+        const ok = await validateParticipantNumber(participantNumber)
+        if (!ok) {
+          setIsSubmitting(false)
+          return
+        }
       }
-
-      // Set whether this is an intervention group participant
-      const isIntervention = participant.Group === 'Intervention'
-      setIsInterventionGroup(isIntervention)
 
       // Check if this participant has already submitted a post-test
       const { data: existingResponse, error: checkError } = await supabase
@@ -127,6 +122,62 @@ function App() {
       setError(err.message || 'An unexpected error occurred. Please try again.')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Validate participant number and set intervention state.
+  // Returns true if valid, false otherwise.
+  const validateParticipantNumber = async (participantNumber) => {
+    setParticipantChecking(true)
+    setParticipantValidationError(null)
+    setParticipantValidated(false)
+
+    try {
+      if (!participantNumber || Number.isNaN(participantNumber)) {
+        setParticipantValidationError('Please enter a valid participant number.')
+        return false
+      }
+
+      const { data: participant, error: fetchError } = await supabase
+        .from('participants')
+        .select('participant_number, Group')
+        .eq('participant_number', participantNumber)
+        .eq('id_used', true)
+        .single()
+
+      if (fetchError || !participant) {
+        setParticipantValidationError('Invalid participant number. Please check your participant number and try again.')
+        return false
+      }
+
+      const isIntervention = participant.Group === 'Intervention'
+      setIsInterventionGroup(isIntervention)
+
+      // Check for existing response
+      const { data: existingResponse, error: checkError } = await supabase
+        .from('posttest_responses')
+        .select('id')
+        .eq('participant_number', participantNumber)
+        .maybeSingle()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        setParticipantValidationError('Error checking existing responses. Please try again.')
+        return false
+      }
+
+      if (existingResponse) {
+        setParticipantValidationError('You have already submitted a post-test. Each participant can only submit once.')
+        return false
+      }
+
+      setParticipantValidated(true)
+      return true
+    } catch (err) {
+      console.error('Validation error:', err)
+      setParticipantValidationError('An unexpected error occurred while validating the participant number.')
+      return false
+    } finally {
+      setParticipantChecking(false)
     }
   }
 

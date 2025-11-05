@@ -1,6 +1,15 @@
 import { useState } from 'react'
 
-const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
+const PosttestForm = ({
+  onSubmit,
+  isSubmitting,
+  isInterventionGroup,
+  onValidateParticipant,
+  onParticipantNumberChange,
+  participantValidated,
+  participantChecking,
+  participantValidationError
+}) => {
   const [formData, setFormData] = useState({
     // Participant identification
     participant_number: '',
@@ -64,6 +73,11 @@ const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
+
+    // If participant number changes, notify parent so it can invalidate previous validation
+    if (name === 'participant_number' && typeof onParticipantNumberChange === 'function') {
+      onParticipantNumberChange(value)
+    }
   }
 
   const handleSubmit = (e) => {
@@ -143,11 +157,23 @@ const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
                 name="participant_number"
                 value={formData.participant_number}
                 onChange={handleInputChange}
+                onBlur={() => onValidateParticipant && onValidateParticipant(parseInt(formData.participant_number))}
                 required
                 min="1"
                 placeholder="Enter your participant number"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
               />
+              <div className="mt-2 flex items-center space-x-2">
+                {participantChecking && (
+                  <span className="text-xs text-gray-500">Checking participant number...</span>
+                )}
+                {participantValidated && (
+                  <span className="text-xs text-green-600">Participant validated</span>
+                )}
+                {participantValidationError && (
+                  <span className="text-xs text-red-600">{participantValidationError}</span>
+                )}
+              </div>
               <p className="text-xs text-gray-500 mt-2">This is the number provided to you when you completed the pre-test.</p>
             </div>
           </div>
@@ -541,15 +567,16 @@ const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
                   <label htmlFor="app_helpful_features" className="block text-sm sm:text-base font-medium text-gray-700 mb-3">
                     What features did you find most helpful?
                   </label>
-                  <textarea
-                    id="app_helpful_features"
-                    name="app_helpful_features"
-                    rows={4}
-                    value={formData.app_helpful_features}
-                    onChange={handleInputChange}
-                    placeholder="e.g., guided meditations, breathing exercises, mood tracking, etc."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
-                  />
+                    <textarea
+                      id="app_helpful_features"
+                      name="app_helpful_features"
+                      rows={4}
+                      value={formData.app_helpful_features}
+                      onChange={handleInputChange}
+                      placeholder="e.g., guided meditations, breathing exercises, mood tracking, etc."
+                      required={isInterventionGroup}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
+                    />
                 </div>
 
                 <div>
@@ -563,6 +590,7 @@ const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
                     value={formData.app_technical_issues}
                     onChange={handleInputChange}
                     placeholder="e.g., app crashes, login problems, features not working, etc."
+                    required={isInterventionGroup}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                   />
                 </div>
@@ -578,6 +606,7 @@ const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
                     value={formData.app_suggestions}
                     onChange={handleInputChange}
                     placeholder="e.g., new features, UI improvements, content suggestions, etc."
+                    required={isInterventionGroup}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                   />
                 </div>
@@ -589,7 +618,7 @@ const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
           <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-gray-100">
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !participantValidated}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 px-6 rounded-lg font-semibold text-base sm:text-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {isSubmitting ? (
@@ -607,6 +636,9 @@ const PosttestForm = ({ onSubmit, isSubmitting, isInterventionGroup }) => {
                 </>
               )}
             </button>
+            {!participantValidated && (
+              <p className="text-xs text-gray-500 mt-2">Please enter and validate your participant number above to enable submission.</p>
+            )}
           </div>
 
           <div className="text-center text-xs sm:text-sm text-gray-500 bg-white rounded-xl p-4 border border-gray-100">
