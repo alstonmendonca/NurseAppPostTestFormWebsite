@@ -13,6 +13,8 @@ const PosttestForm = ({
   const [formData, setFormData] = useState({
     // Participant identification
     participant_number: '',
+  // Self-reported intervention (when participant number is not provided)
+  self_reported_intervention: false,
     
     // WHO-5 Well-Being Index (0-5 scale)
     who5_cheerful: '',
@@ -176,7 +178,7 @@ const PosttestForm = ({
             </div>
             <div>
               <label htmlFor="participant_number" className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
-                Please enter your Participant Number <span className="text-red-500">*</span>
+                Participant Number (optional)
               </label>
               <div className="flex space-x-2 items-center">
                 <input
@@ -185,8 +187,7 @@ const PosttestForm = ({
                   name="participant_number"
                   value={formData.participant_number}
                   onChange={handleInputChange}
-                  onBlur={() => onValidateParticipant && onValidateParticipant(parseInt(formData.participant_number))}
-                  required
+                  onBlur={() => onValidateParticipant && formData.participant_number && onValidateParticipant(parseInt(formData.participant_number))}
                   min="1"
                   placeholder="Enter your participant number"
                   className="flex-1 px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
@@ -214,6 +215,19 @@ const PosttestForm = ({
                     'Check'
                   )}
                 </button>
+              </div>
+              <div className="mt-3">
+                <label className="inline-flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="self_reported_intervention"
+                    name="self_reported_intervention"
+                    checked={formData.self_reported_intervention}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-blue-600 border-gray-300"
+                  />
+                  <span className="text-sm text-gray-700">I was in the Intervention group (I don't remember my participant number)</span>
+                </label>
               </div>
               <div className="mt-2 flex items-center space-x-2">
                 {participantChecking && (
@@ -603,7 +617,7 @@ const PosttestForm = ({
           </div>
 
           {/* App Feedback - Only shown if intervention group */}
-          {isInterventionGroup && (
+          {(isInterventionGroup || formData.self_reported_intervention) && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm p-4 sm:p-6 border-2 border-blue-200">
               <div className="flex items-center mb-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
@@ -626,7 +640,7 @@ const PosttestForm = ({
                       value={formData.app_helpful_features}
                       onChange={handleInputChange}
                       placeholder="e.g., guided meditations, breathing exercises, mood tracking, etc."
-                      required={isInterventionGroup}
+                    required={isInterventionGroup || formData.self_reported_intervention}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                     />
                 </div>
@@ -642,7 +656,7 @@ const PosttestForm = ({
                     value={formData.app_technical_issues}
                     onChange={handleInputChange}
                     placeholder="e.g., app crashes, login problems, features not working, etc."
-                    required={isInterventionGroup}
+                    required={isInterventionGroup || formData.self_reported_intervention}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                   />
                 </div>
@@ -658,7 +672,7 @@ const PosttestForm = ({
                     value={formData.app_suggestions}
                     onChange={handleInputChange}
                     placeholder="e.g., new features, UI improvements, content suggestions, etc."
-                    required={isInterventionGroup}
+                    required={isInterventionGroup || formData.self_reported_intervention}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                   />
                 </div>
@@ -670,7 +684,7 @@ const PosttestForm = ({
           <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-gray-100">
             <button
               type="submit"
-              disabled={isSubmitting || !participantValidated}
+              disabled={isSubmitting || (formData.participant_number && !participantValidated)}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 px-6 rounded-lg font-semibold text-base sm:text-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {isSubmitting ? (
@@ -688,7 +702,7 @@ const PosttestForm = ({
                 </>
               )}
             </button>
-            {!participantValidated && (
+            {formData.participant_number && !participantValidated && (
               <p className="text-xs text-gray-500 mt-2">Please enter and validate your participant number above to enable submission.</p>
             )}
           </div>

@@ -18,9 +18,12 @@ function App() {
     setError(null)
 
     try {
-      // If the participant hasn't been validated yet (via onBlur/validate), do it now
-      const participantNumber = parseInt(formData.participant_number)
-      if (!participantValidated) {
+      // Determine participant number and intervention status.
+      const hasParticipantNumber = formData.participant_number && formData.participant_number.toString().trim().length > 0
+      const participantNumber = hasParticipantNumber ? parseInt(formData.participant_number) : null
+
+      // If a participant number was provided, ensure it's validated.
+      if (hasParticipantNumber && !participantValidated) {
         const ok = await validateParticipantNumber(participantNumber)
         if (!ok) {
           setIsSubmitting(false)
@@ -28,24 +31,27 @@ function App() {
         }
       }
 
-      // Check if this participant has already submitted a post-test
-      const { data: existingResponse, error: checkError } = await supabase
-        .from('posttest_responses')
-        .select('id')
-        .eq('participant_number', participantNumber)
-        .maybeSingle()
+      // If participant number provided, check duplicate submission
+      if (hasParticipantNumber) {
+        const { data: existingResponse, error: checkError } = await supabase
+          .from('posttest_responses')
+          .select('id')
+          .eq('participant_number', participantNumber)
+          .maybeSingle()
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw new Error('Error checking existing responses. Please try again.')
-      }
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw new Error('Error checking existing responses. Please try again.')
+        }
 
-      if (existingResponse) {
-        throw new Error('You have already submitted a post-test. Each participant can only submit once.')
+        if (existingResponse) {
+          throw new Error('You have already submitted a post-test. Each participant can only submit once.')
+        }
       }
 
       // Prepare the data object
       const responseData = {
         participant_number: participantNumber,
+        self_reported_intervention: !!formData.self_reported_intervention,
         
         // WHO-5 Well-Being Index
         who5_cheerful: parseInt(formData.who5_cheerful),
@@ -96,6 +102,9 @@ function App() {
         
         submitted_at: new Date().toISOString()
       }
+
+      // Determine final intervention flag: prefer DB-derived `isInterventionGroup` when a number was provided and validated.
+      const isIntervention = hasParticipantNumber ? isInterventionGroup : !!formData.self_reported_intervention
 
       // Add app feedback if intervention group
       if (isIntervention) {

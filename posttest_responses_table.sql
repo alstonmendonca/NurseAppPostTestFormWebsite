@@ -4,6 +4,8 @@
 CREATE TABLE posttest_responses (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   participant_number INT4 REFERENCES participants(participant_number) ON DELETE CASCADE,
+  -- If participant number is not provided, participants can self-report whether they were in the Intervention group
+  self_reported_intervention BOOLEAN NOT NULL DEFAULT FALSE,
   
   -- WHO-5 Well-Being Index (0-5 scale)
   who5_cheerful INT2 CHECK (who5_cheerful >= 0 AND who5_cheerful <= 5),
@@ -64,6 +66,7 @@ CREATE TABLE posttest_responses (
 -- Create indexes for better query performance
 CREATE INDEX idx_posttest_responses_participant_number ON posttest_responses(participant_number);
 CREATE INDEX idx_posttest_responses_submitted_at ON posttest_responses(submitted_at);
+CREATE INDEX idx_posttest_responses_self_reported_intervention ON posttest_responses(self_reported_intervention);
 
 -- Add comments to document the table
 COMMENT ON TABLE posttest_responses IS 'Stores post-test form responses including app feedback from participants';
@@ -82,4 +85,5 @@ COMMENT ON COLUMN posttest_responses.additional_comments IS 'Optional additional
 COMMENT ON COLUMN posttest_responses.app_helpful_features IS 'Feedback: What features of the app were most helpful';
 COMMENT ON COLUMN posttest_responses.app_technical_issues IS 'Feedback: Technical issues or difficulties encountered';
 COMMENT ON COLUMN posttest_responses.app_suggestions IS 'Feedback: Suggestions for app improvement';
+COMMENT ON COLUMN posttest_responses.self_reported_intervention IS 'When participant did not provide a participant number, they may self-report that they were in the intervention group';
 COMMENT ON COLUMN posttest_responses.submitted_at IS 'When the post-test form was submitted';
