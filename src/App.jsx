@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { supabase } from './lib/supabase'
 import PosttestForm from './components/PosttestForm'
 import SuccessPage from './components/SuccessPage'
@@ -8,50 +8,15 @@ function App() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [error, setError] = useState(null)
-  const [isInterventionGroup, setIsInterventionGroup] = useState(false)
-  const [participantValidated, setParticipantValidated] = useState(false)
-  const [participantChecking, setParticipantChecking] = useState(false)
-  const [participantValidationError, setParticipantValidationError] = useState(null)
 
   const handleFormSubmit = async (formData) => {
     setIsSubmitting(true)
     setError(null)
 
     try {
-      // Determine participant number and intervention status.
-      const hasParticipantNumber = formData.participant_number && formData.participant_number.toString().trim().length > 0
-      const participantNumber = hasParticipantNumber ? parseInt(formData.participant_number) : null
-
-      // If a participant number was provided, ensure it's validated.
-      if (hasParticipantNumber && !participantValidated) {
-        const ok = await validateParticipantNumber(participantNumber)
-        if (!ok) {
-          setIsSubmitting(false)
-          return
-        }
-      }
-
-      // If participant number provided, check duplicate submission
-      if (hasParticipantNumber) {
-        const { data: existingResponse, error: checkError } = await supabase
-          .from('posttest_responses')
-          .select('id')
-          .eq('participant_number', participantNumber)
-          .maybeSingle()
-
-        if (checkError && checkError.code !== 'PGRST116') {
-          throw new Error('Error checking existing responses. Please try again.')
-        }
-
-        if (existingResponse) {
-          throw new Error('You have already submitted a post-test. Each participant can only submit once.')
-        }
-      }
-
       // Prepare the data object
       const responseData = {
-        participant_number: participantNumber,
-        self_reported_intervention: !!formData.self_reported_intervention,
+        group_assignment: formData.group_assignment,
         
         // WHO-5 Well-Being Index
         who5_cheerful: parseInt(formData.who5_cheerful),
@@ -103,11 +68,8 @@ function App() {
         submitted_at: new Date().toISOString()
       }
 
-      // Determine final intervention flag: prefer DB-derived `isInterventionGroup` when a number was provided and validated.
-      const isIntervention = hasParticipantNumber ? isInterventionGroup : !!formData.self_reported_intervention
-
       // Add app feedback if intervention group
-      if (isIntervention) {
+      if (formData.group_assignment === 'Intervention') {
         responseData.app_helpful_features = formData.app_helpful_features || null
         responseData.app_technical_issues = formData.app_technical_issues || null
         responseData.app_suggestions = formData.app_suggestions || null
@@ -133,62 +95,6 @@ function App() {
       setIsSubmitting(false)
     }
   }
-
-  // Validate participant number and set intervention state.
-  // Returns true if valid, false otherwise.
-  const validateParticipantNumber = useCallback(async (participantNumber) => {
-    setParticipantChecking(true)
-    setParticipantValidationError(null)
-    setParticipantValidated(false)
-
-    try {
-      if (!participantNumber || Number.isNaN(participantNumber)) {
-        setParticipantValidationError('Please enter a valid participant number.')
-        return false
-      }
-
-      const { data: participant, error: fetchError } = await supabase
-        .from('participants')
-        .select('participant_number, Group')
-        .eq('participant_number', participantNumber)
-        .eq('id_used', true)
-        .single()
-
-      if (fetchError || !participant) {
-        setParticipantValidationError('Invalid participant number. Please check your participant number and try again.')
-        return false
-      }
-
-      const isIntervention = participant.Group === 'Intervention'
-      setIsInterventionGroup(isIntervention)
-
-      // Check for existing response
-      const { data: existingResponse, error: checkError } = await supabase
-        .from('posttest_responses')
-        .select('id')
-        .eq('participant_number', participantNumber)
-        .maybeSingle()
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        setParticipantValidationError('Error checking existing responses. Please try again.')
-        return false
-      }
-
-      if (existingResponse) {
-        setParticipantValidationError('You have already submitted a post-test. Each participant can only submit once.')
-        return false
-      }
-
-      setParticipantValidated(true)
-      return true
-    } catch (err) {
-      console.error('Validation error:', err)
-      setParticipantValidationError('An unexpected error occurred while validating the participant number.')
-      return false
-    } finally {
-      setParticipantChecking(false)
-    }
-  }, [])
 
   if (isSubmitted) {
     return <SuccessPage />
@@ -219,17 +125,6 @@ function App() {
       <PosttestForm 
         onSubmit={handleFormSubmit} 
         isSubmitting={isSubmitting}
-        isInterventionGroup={isInterventionGroup}
-        onValidateParticipant={validateParticipantNumber}
-          onParticipantNumberChange={useCallback((val) => {
-            // Invalidate any prior validation when participant number changes
-            setParticipantValidated(false)
-            setParticipantValidationError(null)
-            setIsInterventionGroup(false)
-          }, [])}
-        participantValidated={participantValidated}
-        participantChecking={participantChecking}
-        participantValidationError={participantValidationError}
       />
     </div>
   )

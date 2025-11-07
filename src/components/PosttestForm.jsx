@@ -1,22 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 
 const PosttestForm = ({
   onSubmit,
-  isSubmitting,
-  isInterventionGroup,
-  onValidateParticipant,
-  onParticipantNumberChange,
-  participantValidated,
-  participantChecking,
-  participantValidationError
+  isSubmitting
 }) => {
   const [formData, setFormData] = useState({
-    // Participant identification
-    participant_number: '',
-  // Self-reported intervention (when participant number is not provided)
-  self_reported_intervention: false,
-    
-    // WHO-5 Well-Being Index (0-5 scale)
+    // Group assignment
+    group_assignment: '',    // WHO-5 Well-Being Index (0-5 scale)
     who5_cheerful: '',
     who5_calm: '',
     who5_active: '',
@@ -75,39 +65,7 @@ const PosttestForm = ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }))
-
-    // If participant number changes, notify parent so it can invalidate previous validation
-    if (name === 'participant_number' && typeof onParticipantNumberChange === 'function') {
-      onParticipantNumberChange(value)
-    }
   }
-
-  // Debounce participant number validation as the user types.
-  // Configurable debounce delay.
-  const DEBOUNCE_MS = 400
-  const debounceTimer = useRef(null)
-  useEffect(() => {
-    const num = formData.participant_number
-    // Only run debounce if parent provided validation callback
-    if (typeof onValidateParticipant === 'function') {
-      // clear existing timer
-      if (debounceTimer.current) clearTimeout(debounceTimer.current)
-
-      // if empty, do nothing (but parent was already notified via onParticipantNumberChange)
-      if (!num || num.toString().trim().length === 0) return
-
-      debounceTimer.current = setTimeout(() => {
-        const parsed = parseInt(num)
-        if (!Number.isNaN(parsed)) {
-          onValidateParticipant(parsed)
-        }
-      }, DEBOUNCE_MS)
-    }
-
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    }
-  }, [formData.participant_number, onValidateParticipant])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -169,78 +127,43 @@ const PosttestForm = ({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Participant Number Input */}
+          {/* Group Assignment Selection */}
           <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-gray-100">
             <div className="flex items-center mb-4">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
-                Participant Identification
+                Study Group
               </h2>
             </div>
             <div>
-              <label htmlFor="participant_number" className="block text-sm sm:text-base font-medium text-gray-700 mb-2">
-                Participant Number (optional)
+              <label className="block text-sm sm:text-base font-medium text-gray-700 mb-3">
+                Which study group were you assigned to? <span className="text-red-500">*</span>
               </label>
-              <div className="flex space-x-2 items-center">
-                <input
-                  type="number"
-                  id="participant_number"
-                  name="participant_number"
-                  value={formData.participant_number}
-                  onChange={handleInputChange}
-                  onBlur={() => onValidateParticipant && formData.participant_number && onValidateParticipant(parseInt(formData.participant_number))}
-                  min="1"
-                  placeholder="Enter your participant number"
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
-                />
-                <button
-                  type="button"
-                  onClick={() => onValidateParticipant && onValidateParticipant(parseInt(formData.participant_number))}
-                  disabled={participantChecking || !formData.participant_number}
-                  className={`inline-flex items-center px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm ${participantChecking ? 'bg-gray-300 text-gray-700 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                  aria-live="polite"
-                >
-                  {participantChecking ? (
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : participantValidated ? (
-                    <>
-                      <svg className="h-4 w-4 mr-2 text-white" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414-1.414L7.5 11.672 4.707 8.88a1 1 0 00-1.414 1.414l3.5 3.5a1 1 0 001.414 0l8.5-8.5z" clipRule="evenodd" />
-                      </svg>
-                      Valid
-                    </>
-                  ) : (
-                    'Check'
-                  )}
-                </button>
-              </div>
-              <div className="mt-3">
-                <label className="inline-flex items-center space-x-2">
+              <div className="space-y-3">
+                <label className="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
                   <input
-                    type="checkbox"
-                    id="self_reported_intervention"
-                    name="self_reported_intervention"
-                    checked={formData.self_reported_intervention}
+                    type="radio"
+                    name="group_assignment"
+                    value="Control"
+                    checked={formData.group_assignment === 'Control'}
                     onChange={handleInputChange}
-                    className="h-4 w-4 text-blue-600 border-gray-300"
+                    required
+                    className="mt-0.5 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
                   />
-                  <span className="text-sm text-gray-700">I was in the Intervention group (I don't remember my participant number)</span>
+                  <span className="text-sm sm:text-base text-gray-700 leading-relaxed">Control Group</span>
+                </label>
+                <label className="flex items-start space-x-3 p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                  <input
+                    type="radio"
+                    name="group_assignment"
+                    value="Intervention"
+                    checked={formData.group_assignment === 'Intervention'}
+                    onChange={handleInputChange}
+                    required
+                    className="mt-0.5 h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300"
+                  />
+                  <span className="text-sm sm:text-base text-gray-700 leading-relaxed">Intervention Group (I used the SHANTHI app)</span>
                 </label>
               </div>
-              <div className="mt-2 flex items-center space-x-2">
-                {participantChecking && (
-                  <span className="text-xs text-gray-500">Checking participant number...</span>
-                )}
-                {participantValidated && (
-                  <span className="text-xs text-green-600">Participant validated</span>
-                )}
-                {participantValidationError && (
-                  <span className="text-xs text-red-600">{participantValidationError}</span>
-                )}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">This is the number provided to you when you completed the pre-test.</p>
             </div>
           </div>
 
@@ -617,7 +540,7 @@ const PosttestForm = ({
           </div>
 
           {/* App Feedback - Only shown if intervention group */}
-          {(isInterventionGroup || formData.self_reported_intervention) && (
+          {formData.group_assignment === 'Intervention' && (
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm p-4 sm:p-6 border-2 border-blue-200">
               <div className="flex items-center mb-4">
                 <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
@@ -640,7 +563,7 @@ const PosttestForm = ({
                       value={formData.app_helpful_features}
                       onChange={handleInputChange}
                       placeholder="e.g., guided meditations, breathing exercises, mood tracking, etc."
-                    required={isInterventionGroup || formData.self_reported_intervention}
+                    required={formData.group_assignment === 'Intervention'}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                     />
                 </div>
@@ -656,7 +579,7 @@ const PosttestForm = ({
                     value={formData.app_technical_issues}
                     onChange={handleInputChange}
                     placeholder="e.g., app crashes, login problems, features not working, etc."
-                    required={isInterventionGroup || formData.self_reported_intervention}
+                    required={formData.group_assignment === 'Intervention'}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                   />
                 </div>
@@ -672,7 +595,7 @@ const PosttestForm = ({
                     value={formData.app_suggestions}
                     onChange={handleInputChange}
                     placeholder="e.g., new features, UI improvements, content suggestions, etc."
-                    required={isInterventionGroup || formData.self_reported_intervention}
+                    required={formData.group_assignment === 'Intervention'}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-sm sm:text-base"
                   />
                 </div>
@@ -684,7 +607,7 @@ const PosttestForm = ({
           <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-gray-100">
             <button
               type="submit"
-              disabled={isSubmitting || (formData.participant_number && !participantValidated)}
+              disabled={isSubmitting}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 px-6 rounded-lg font-semibold text-base sm:text-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {isSubmitting ? (
@@ -702,9 +625,6 @@ const PosttestForm = ({
                 </>
               )}
             </button>
-            {formData.participant_number && !participantValidated && (
-              <p className="text-xs text-gray-500 mt-2">Please enter and validate your participant number above to enable submission.</p>
-            )}
           </div>
 
           <div className="text-center text-xs sm:text-sm text-gray-500 bg-white rounded-xl p-4 border border-gray-100">
