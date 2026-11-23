@@ -62,6 +62,23 @@ CREATE TABLE posttest_responses (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Enable Row Level Security
+ALTER TABLE posttest_responses ENABLE ROW LEVEL SECURITY;
+
+-- Allow anonymous users to INSERT (for the public form)
+CREATE POLICY "Allow anonymous inserts on posttest_responses"
+  ON posttest_responses
+  FOR INSERT
+  TO anon
+  WITH CHECK (true);
+
+-- Restrict SELECT to authenticated users only (so data isn't publicly readable)
+CREATE POLICY "Allow authenticated reads on posttest_responses"
+  ON posttest_responses
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_posttest_responses_group_assignment ON posttest_responses(group_assignment);
 CREATE INDEX idx_posttest_responses_submitted_at ON posttest_responses(submitted_at);
